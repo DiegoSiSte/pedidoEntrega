@@ -5,9 +5,8 @@ import json
 import folium
 
 app = Flask(__name__)
-app.secret_key = 'tu_clave_secreta_muy_segura' # Cambia esto en producción
+app.secret_key = 'tu_clave_secreta_muy_segura'  # Cambia esto en prod.
 
-# Simulación de una base de datos de usuarios
 users = {
     'admin': {'password': 'adminpass', 'role': 'admin'},
     'driver': {'password': 'driverpass', 'role': 'driver'},
@@ -20,7 +19,7 @@ def login_required(f):
         if 'username' not in session:
             flash('Por favor, inicia sesión para acceder a esta página.', 'error')
             return redirect(url_for('login'))
-        return decorated_function(*args, **kwargs)
+        return f(*args, **kwargs)
     return decorated_function
 
 @app.route('/')
@@ -39,14 +38,13 @@ def login():
             return redirect(url_for('dashboard'))
         else:
             flash('Usuario o contraseña incorrectos', 'error')
-            return render_template('login.html')
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
     session.pop('username', None)
     session.pop('role', None)
-    flash('Has cerrado sesión.', 'info')
+    flash('Has cerrado sesión', 'info')
     return redirect(url_for('home'))
 
 @app.route('/dashboard')
@@ -55,22 +53,18 @@ def dashboard():
     return render_template('dashboard.html')
 
 @app.route('/ver_mapa')
+@login_required
 def ver_mapa():
-    if 'username' not in session or session['username'] == None:
-        return redirect(url_for('login'))
+    m = folium.Map(location=[-17.3935, -66.1578], zoom_start=15)
 
-    # Crear el mapa centrado en Cochabamba
-    m = folium.Map(location=[-17.3935, -66.1570], zoom_start=15)
-
-    # Lista de tiendas con sus datos
     tiendas = [
         {
             'nombre': 'Doña Filomena',
             'contacto': 'Filomena Delgado',
-            'direccion': 'Calle la Tablada #4533',
+            'direccion': 'Calle La Tablada #4533',
             'telefono': '77788899',
             'foto': 'tienda_barrio.jpg',
-            'ubicacion': [-17.3910, -66.1570]
+            'ubicacion': [-17.3935, -66.1570]
         },
         {
             'nombre': 'Abarrotes El Carmen',
@@ -84,15 +78,15 @@ def ver_mapa():
             'nombre': 'Minimarket Los Andes',
             'contacto': 'Juan Mamani',
             'direccion': 'Av. América Este #345',
-            'telefono': '76707070',
+            'telefono': '70707070',
             'foto': 'tienda_andes.jpg',
             'ubicacion': [-17.3980, -66.1420]
         },
         {
             'nombre': 'Tienda Don Pedro',
             'contacto': 'Pedro Flores',
-            'direccion': 'Calle Jordan #1234',
-            'telefono': '72334567',
+            'direccion': 'Calle Jordán #1234',
+            'telefono': '71234567',
             'foto': 'tienda_pedro.jpg',
             'ubicacion': [-17.4050, -66.1610]
         },
@@ -107,7 +101,7 @@ def ver_mapa():
         {
             'nombre': 'Almacén El Sol',
             'contacto': 'Roberto Mendoza',
-            'direccion': 'Av. Heroinas #765',
+            'direccion': 'Av. Heroínas #765',
             'telefono': '76767676',
             'foto': 'tienda_sol.jpg',
             'ubicacion': [-17.3880, -66.1550]
@@ -115,45 +109,38 @@ def ver_mapa():
         {
             'nombre': 'Tienda Doña Rosa',
             'contacto': 'Rosa Méndez',
-            'direccion': 'Calle Ramiraya #432',
+            'direccion': 'Calle Hamiraya #432',
             'telefono': '79876543',
             'foto': 'tienda_rosa.jpg',
             'ubicacion': [-17.4010, -66.1520]
         }
     ]
 
-    # Agregar marcadores para cada tienda
     for tienda in tiendas:
         foto_url = url_for('static', filename=f'fotos/{tienda["foto"]}')
-        popup_content = f"""<table border=1 class="table table-success table-striped">
-        <tr><td colspan="2"><img src="{foto_url}" width='250' height='200'></td></tr>
-        <tr><td>Tienda:</td><td><b>{tienda['nombre']}</b></td></tr>
-        <tr><td>Contacto:</td><td><b>{tienda['contacto']}</b></td></tr>
-        <tr><td>Dirección:</td><td><b>{tienda['direccion']}</b></td></tr>
-        <tr><td>Teléfono:</td><td><b>{tienda['telefono']}</b></td></tr>
-        <tr><td colspan="2"><center><a class="btn btn-primary" href="/pedido"
-        style="color: white">Ver Pedido/a</center></td></tr>
-        </table>"""
-
+        popup_content = f"""
+        <table border="1" class="table table-success table-striped">
+            <tr><td colspan="2"><img src="{foto_url}" width="250" height="200"/></td></tr>
+            <tr><td>Tienda:</td><td>{tienda['nombre']}</td></tr>
+            <tr><td>Contacto:</td><td>{tienda['contacto']}</td></tr>
+            <tr><td>Dirección:</td><td>{tienda['direccion']}</td></tr>
+            <tr><td>Teléfono:</td><td>{tienda['telefono']}</td></tr>
+        </table>
+        """
         folium.Marker(
             location=tienda['ubicacion'],
             popup=folium.Popup(popup_content, max_width=300),
-            tooltip=f'Tienda: {tienda["nombre"]}',
+            tooltip=f"Tienda: {tienda['nombre']}",
             icon=folium.Icon(color='blue', icon='shopping-cart', prefix='fa')
         ).add_to(m)
 
-    # Guardar el mapa en un archivo HTML
-    path='/home/lamateria/mysite/static/mapa_cbb.html'
-    # path='savedPath'
-    mape_html = m._repr_html_()
-
-    # Renderizar la plantilla HTML
-    return render_template('mapa.html', mapa=mape_html)
-
+    mapa_html = m._repr_html_() # Se usa el guion bajo
+    return render_template('mapa.html', mapa=mapa_html)
 
 @app.route('/pedido')
+@login_required
 def pedido():
-    if 'username' not in session or session['username'] == None:
-        return redirect(url_for('login'))
+    return render_template('pedido.html')
 
-    return render_template("pedido.html")
+if __name__ == '__main__':
+    app.run(debug=True)
